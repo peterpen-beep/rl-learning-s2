@@ -1,0 +1,73 @@
+import numpy as np
+
+# 悬崖漫步环境 (4行12列)
+ROWS = 4
+COLS = 12
+ACTIONS = [0, 1, 2, 3]  # 上, 右, 下, 左
+START = (3, 0)
+GOAL = (3, 11)
+
+# 环境步进函数
+def step(state, action):
+    x, y = state
+    if action == 0: x = max(x-1, 0)
+    if action == 1: y = min(y+1, COLS-1)
+    if action == 2: x = min(x+1, ROWS-1)
+    if action == 3: y = max(y-1, 0)
+
+    # 掉悬崖: 回到起点, 奖励-100
+    if x == 3 and 1 <= y <= 10:
+        return START, -100, False
+    # 到达终点
+    if (x, y) == GOAL:
+        return (x, y), 0, True
+    # 普通步
+    return (x, y), -1, False
+
+def sarsa(episodes=500, lr=0.1, gamma=0.9, epsilon=0.1):
+    q_table = np.zeros((ROWS, COLS, len(ACTIONS)))
+
+    for ep in range(episodes):
+        state = START
+        # Sarsa: 提前选第一个动作
+        if np.random.uniform() < epsilon:
+            action = np.random.choice(ACTIONS)
+        else:
+            action = np.argmax(q_table[state[0], state[1]])
+        done = False
+
+        while not done:
+            next_state, reward, done = step(state, action)
+            # 选下一个动作
+            if np.random.uniform() < epsilon:
+                next_action = np.random.choice(ACTIONS)
+            else:
+                next_action = np.argmax(q_table[next_state[0], next_state[1]])
+            # Sarsa核心更新公式
+            q_table[state[0], state[1], action] += lr * (
+                reward + gamma * q_table[next_state[0], next_state[1], next_action] - q_table[state[0], state[1], action]
+            )
+            state, action = next_state, next_action
+    return q_table
+
+def show_policy(q_table):
+    dirs = ['↑', '→', '↓', '←']
+    for i in range(ROWS):
+        line = []
+        for j in range(COLS):
+            if i == 3 and 1 <= j <= 10:
+                line.append('■')
+            elif (i,j) == GOAL:
+                line.append('G')
+            else:
+                line.append(dirs[np.argmax(q_table[i,j])])
+        print(' '.join(line))
+
+
+
+# 训练算法
+q_table_sarsa = sarsa()
+print("训练完成！")
+    
+print("\nSarsa 策略:")
+show_policy(q_table_sarsa)
